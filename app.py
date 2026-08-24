@@ -239,8 +239,14 @@ def _las_parquet_med_omforsok(path: str, columns: list, forsok: int = 5, vanteti
     raise senaste_fel
 
 
-@st.cache_data(show_spinner="Läser in viltolycksdata...")
+@st.cache_resource(show_spinner="Läser in viltolycksdata...")
 def load_data(path: str, senast_andrad: float) -> pd.DataFrame:
+    """OBS: cache_resource (inte cache_data) med flit — datan är stor (750 000+ rader) och
+    ska aldrig kopieras per session/besökare, bara läsas. Delas därför som EN gemensam
+    instans mellan alla samtidiga användare istället för att varje session får sin egen
+    kopia i minnet (skulle annars multiplicera minnesanvändningen med antalet besökare).
+    Kräver att koden aldrig muterar df i efterhand — all filtrering sker via df[mask],
+    som alltid skapar en ny, oberoende dataframe."""
     cols = [
         "OlycksID", "Typ av olycka", "Datum", "Län", "Kommun", "Viltslag",
         "Lat WGS84", "Long WGS84", "Kön", "Årsunge",
@@ -275,6 +281,17 @@ def load_data(path: str, senast_andrad: float) -> pd.DataFrame:
         timme.map(lambda h: f"{int(h):02d}" if pd.notna(h) else None),
         categories=HOUR_NAMES, ordered=True,
     )
+
+    # Minnesoptimering: lågkardinalitets textkolumner som kategorityp (bråkdel av minnet
+    # för samma innehåll), koordinater som float32 (halva minnet, gott om precision kvar
+    # för en karta). Sänker minnesavtrycket för hela dataframen med ca 3x.
+    for kol in [
+        "Typ av olycka", "Län", "Kommun", "Viltslag", "Kön", "Årsunge",
+        "Vad har skett med viltet", "Europaväg", "ÅrVisning",
+    ]:
+        df[kol] = df[kol].astype("category")
+    df["Lat"] = df["Lat"].astype("float32")
+    df["Long"] = df["Long"].astype("float32")
 
     return df.drop(columns=["Lat WGS84", "Long WGS84"])
 
@@ -386,6 +403,13 @@ filtered = apply_filter(filtered, "Kön", selected_kon)
 filtered = apply_filter(filtered, "Årsunge", selected_arsunge)
 filtered = apply_filter(filtered, "Vad har skett med viltet", selected_utfall)
 filtered = apply_filter(filtered, "Europaväg", selected_europavag)
+
+# Kategorikolumner behåller hela df:s ursprungliga kategorilista även efter filtrering
+# (t.ex. alla 291 kommuner, även om urvalet bara innehåller data från en). Utan att städa
+# bort de nu tomma kategorierna skulle value_counts()/groupby m.fl. kunna räkna med
+# "spökkategorier" som har noll träffar i just detta urval.
+for _kategorikolumn in filtered.select_dtypes(include="category").columns:
+    filtered[_kategorikolumn] = filtered[_kategorikolumn].cat.remove_unused_categories()
 
 st.caption(f"Visar {len(filtered):,} av {len(df):,} djur utifrån valda filter.".replace(",", " "))
 
