@@ -243,6 +243,9 @@ def load_data(path: str, senast_andrad: float) -> pd.DataFrame:
 
     df["År"] = ar
     df["ÅrVisning"] = ar.astype("Int64").astype(str).where(ar.notna())
+    # OlycksID är bara unikt inom ett kalenderår (källans nummerserie återanvänds årsvis),
+    # så ett globalt unikt olycks-ID måste kombinera år + OlycksID.
+    df["OlycksID_Unik"] = df["ÅrVisning"].astype(str) + "_" + df["OlycksID"].astype(str)
     df["Månad"] = pd.Categorical(
         manad.map(lambda m: MONTH_NAMES[m - 1] if pd.notna(m) else None),
         categories=MONTH_NAMES, ordered=True,
@@ -279,7 +282,7 @@ ANTAL_BESOK = logga_besok_och_hamta_antal()
 
 RAPPORTERINGSFORDROJNING_DAGAR = 60
 SENASTE_KOMPLETTA_DATUM = df["Datum"].max() - pd.Timedelta(days=RAPPORTERINGSFORDROJNING_DAGAR)
-ANTAL_UNIKA_OLYCKOR_TOTALT = df["OlycksID"].nunique()
+ANTAL_UNIKA_OLYCKOR_TOTALT = df["OlycksID_Unik"].nunique()
 
 st.markdown(
     f"""
@@ -378,7 +381,7 @@ k1.metric(
     "🦌 Antal djur i olyckor", f"{len(filtered):,}".replace(",", " "),
     help="Varje rad i rådatan är ett djur. Se '🚓 Varav unika olyckor' för antalet faktiska olyckstillfällen.",
 )
-antal_unika = filtered["OlycksID"].nunique()
+antal_unika = filtered["OlycksID_Unik"].nunique()
 k2.metric(
     "🚓 Varav unika olyckor", f"{antal_unika:,}".replace(",", " "),
     help="Sedan 2021 kan flera djur rapporteras på samma olyckstillfälle (samma OlycksID), så detta tal kan vara lägre än antal djur.",
@@ -501,7 +504,7 @@ with tab_oversikt:
         fakta.append(("🍂", m, f"är den mest olycksdrabbade månaden ({andel_m:.1f}% av alla djur) — troligen kopplat till brunsttid och mörkare kvällar."))
 
     frekvens_bas = filtered[filtered["Datum"] <= SENASTE_KOMPLETTA_DATUM]
-    antal_unika_frekvens = frekvens_bas["OlycksID"].nunique()
+    antal_unika_frekvens = frekvens_bas["OlycksID_Unik"].nunique()
     if antal_unika_frekvens > 1:
         dagar = max((frekvens_bas["Datum"].max() - frekvens_bas["Datum"].min()).days, 1)
         minuter = (dagar * 24 * 60) / antal_unika_frekvens
@@ -533,8 +536,8 @@ with tab_oversikt:
         sista_datum = filtered.loc[filtered["År"] == sista_ar, "Datum"].max()
         if (sista_datum.month, sista_datum.day) < (12, 25) and len(ar_lista) >= 3:
             sista_ar = ar_lista[-2]
-        antal_forsta = filtered.loc[filtered["År"] == forsta_ar, "OlycksID"].nunique()
-        antal_sista = filtered.loc[filtered["År"] == sista_ar, "OlycksID"].nunique()
+        antal_forsta = filtered.loc[filtered["År"] == forsta_ar, "OlycksID_Unik"].nunique()
+        antal_sista = filtered.loc[filtered["År"] == sista_ar, "OlycksID_Unik"].nunique()
         if antal_forsta > 0 and sista_ar != forsta_ar:
             forandring = (antal_sista - antal_forsta) / antal_forsta * 100
             fakta.append(("📈", f"{forandring:+.0f}%", f"har antalet viltolyckor förändrats mellan {forsta_ar} och {sista_ar} (hela kalenderår)."))
