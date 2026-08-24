@@ -152,6 +152,25 @@ section[data-testid="stSidebar"] {
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
+/* Låt ett vertikalt svep över ett diagram fortsätta scrolla sidan istället för att
+   fastna i diagrammets egen pan/zoom-hantering (annars kan man "fastna" på ett
+   diagram på mobil och inte komma vidare nedåt på sidan). */
+div[data-testid="stPlotlyChart"], div[data-testid="stPlotlyChart"] > div, .js-plotly-plot {
+    touch-action: pan-y !important;
+}
+
+/* Gör sidopanelens fäll-ut-pil (syns när panelen är hopfälld) tydligare - annars är
+   den en liten, lätt att missa ikon, särskilt på mobil. */
+[data-testid="stSidebarCollapsedControl"] {
+    background: white !important;
+    border: 2px solid var(--skog) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+}
+[data-testid="stSidebarCollapsedControl"] svg { color: var(--skog) !important; }
+
+.scroll-hint { text-align: center; color: #6B7280; font-size: 0.85rem; margin: 0.4rem 0 0.8rem 0; }
+
 /* Mobil/smal skärm: mindre marginaler och tätare kort så mer ryms utan att klippas */
 @media (max-width: 640px) {
     .block-container { padding-top: 1.5rem; padding-left: 0.6rem; padding-right: 0.6rem; }
@@ -306,8 +325,9 @@ st.markdown(
     <div class="banner">
         <h1>🦌 Viltolyckor i Sverige</h1>
         <p>Utforska {len(df):,} djur inblandade i {ANTAL_UNIKA_OLYCKOR_TOTALT:,} registrerade viltolyckor,
-        {df['Datum'].min():%Y-%m-%d} – {df['Datum'].max():%Y-%m-%d}.
-        Filtrera i sidopanelen och välj flik för olika sätt att analysera datan.</p>
+        {df['Datum'].min():%Y-%m-%d} – {df['Datum'].max():%Y-%m-%d}.</p>
+        <p style="margin-top:0.5rem;font-weight:600;">👈 Tryck på pilen uppe till vänster för att öppna filtren
+        och göra ett urval — välj sedan flik nedanför för olika sätt att analysera datan.</p>
     </div>
     """.replace(",", " "),
     unsafe_allow_html=True,
@@ -411,6 +431,8 @@ k2.metric(
     help="Sedan 2021 kan flera djur rapporteras på samma olyckstillfälle (samma OlycksID), så detta tal kan vara lägre än antal djur.",
 )
 k3.metric("Vanligaste viltslag", filtered["Viltslag"].mode().iat[0])
+
+st.markdown('<p class="scroll-hint">⌄ Fler analyser och diagram nedanför ⌄</p>', unsafe_allow_html=True)
 
 tab_oversikt, tab_lokal, tab_utforska, tab_jamfor, tab_korstabell, tab_karta, tab_data = st.tabs(
     ["🏠 Översikt", "📰 Lokal vinkel", "🔍 Utforska", "⚖️ Jämför", "🔀 Korstabell", "🗺️ Karta", "📄 Data"]
