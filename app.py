@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 from datetime import datetime
 
 import pandas as pd
@@ -222,6 +223,22 @@ def logga_besok_och_hamta_antal() -> int:
         return 0
 
 
+def _las_parquet_med_omforsok(path: str, columns: list, forsok: int = 5, vantetid: float = 1.0) -> pd.DataFrame:
+    """Läser en parquet-fil med återförsök. Skyddar mot att appen läser filen precis
+    medan en driftsättning fortfarande håller på att skriva den till disk (race
+    condition vid omstart efter en ny git-pull), vilket annars kan se ut som en
+    korrupt/tom fil trots att den egentligen är helt intakt."""
+    senaste_fel = None
+    for i in range(forsok):
+        try:
+            return pd.read_parquet(path, columns=columns)
+        except Exception as e:
+            senaste_fel = e
+            if i < forsok - 1:
+                time.sleep(vantetid)
+    raise senaste_fel
+
+
 @st.cache_data(show_spinner="Läser in viltolycksdata...")
 def load_data(path: str, senast_andrad: float) -> pd.DataFrame:
     cols = [
@@ -229,7 +246,7 @@ def load_data(path: str, senast_andrad: float) -> pd.DataFrame:
         "Lat WGS84", "Long WGS84", "Kön", "Årsunge",
         "Vad har skett med viltet", "Europaväg",
     ]
-    df = pd.read_parquet(path, columns=cols)
+    df = _las_parquet_med_omforsok(path, cols)
 
     df["Datum"] = pd.to_datetime(df["Datum"], format="%Y-%m-%d %H:%M", errors="coerce")
     df["Lat"] = pd.to_numeric(df["Lat WGS84"].astype(str).str.replace(",", "."), errors="coerce")
