@@ -580,6 +580,76 @@ with tab_oversikt:
             forandring = (antal_sista - antal_forsta) / antal_forsta * 100
             fakta.append(("📈", f"{forandring:+.0f}%", f"har antalet viltolyckor förändrats mellan {forsta_ar} och {sista_ar} (hela kalenderår)."))
 
+    # Vilket viltslag dominerar mest
+    if not viltslag_counts.empty:
+        vanligast_art = viltslag_counts.idxmax()
+        andel_vanligast = viltslag_counts.max() / len(filtered) * 100
+        if andel_vanligast > 50:
+            fakta.append((
+                "🦌", vanligast_art,
+                f"står ensamt för {andel_vanligast:.0f}% av alla viltolyckor i urvalet — fler än alla andra viltslag tillsammans.",
+            ))
+        else:
+            fakta.append((
+                "🦌", vanligast_art,
+                f"är det klart vanligaste viltslaget i urvalet — {andel_vanligast:.0f}% av alla djur.",
+            ))
+
+    # Vanligaste och sällsyntaste utfallet (exkl. "Olycksplats ej påträffad" som bara funnits sedan feb 2026
+    # och därför alltid ser artificiellt sällsynt ut i en jämförelse över hela tidsperioden)
+    utfall_counts = filtered.loc[
+        filtered["Vad har skett med viltet"] != "Olycksplats ej påträffad", "Vad har skett med viltet"
+    ].value_counts()
+    utfall_counts = utfall_counts[utfall_counts > 0]  # kategorityp kan annars lämna kvar 0-räknade "spökkategorier"
+    if len(utfall_counts) >= 2:
+        totalt_utfall = utfall_counts.sum()
+        vanligast_utfall = utfall_counts.idxmax()
+        sallsynt_utfall = utfall_counts.idxmin()
+        fakta.append((
+            "☠️", vanligast_utfall,
+            f"är det vanligaste utfallet för påkörda djur — {utfall_counts.max() / totalt_utfall:.0%} av alla djur, "
+            f"jämfört med bara {utfall_counts.min() / totalt_utfall:.0%} för '{sallsynt_utfall}' (sällsyntast).",
+        ))
+
+    # Viltslag som sticker ut mot tåg respektive överlevnadschans (kräver rimligt stort underlag per art)
+    ARTUNDERLAG_MIN = 200
+    kvalificerade_arter = viltslag_counts[viltslag_counts >= ARTUNDERLAG_MIN].index
+    if len(kvalificerade_arter) >= 3:
+        jarnvag_per_art = {}
+        oskadat_per_art = {}
+        for art in kvalificerade_arter:
+            sub = filtered[filtered["Viltslag"] == art]
+            jarnvag_per_art[art] = (sub["Typ av olycka"] == "Järnväg").mean() * 100
+            oskadat_per_art[art] = (sub["Vad har skett med viltet"] == "Bedöms oskadat").mean() * 100
+
+        jarnvag_serie = pd.Series(jarnvag_per_art).sort_values(ascending=False)
+        if jarnvag_serie.iloc[0] > jarnvag_serie.iloc[1] * 1.5:
+            fakta.append((
+                "🚂", jarnvag_serie.index[0],
+                f"sticker ut som det viltslag som oftast krockar med tåg — {jarnvag_serie.iloc[0]:.0f}% av "
+                f"olyckorna sker på järnväg, klart mer än övriga viltslag i urvalet.",
+            ))
+
+        oskadat_serie = pd.Series(oskadat_per_art).sort_values(ascending=False)
+        fakta.append((
+            "💚", oskadat_serie.index[0],
+            f"har högst chans att klara sig oskadd av de vanligare viltslagen — {oskadat_serie.iloc[0]:.0f}% "
+            f"bedöms oskadade, jämfört med {oskadat_serie.iloc[-1]:.0f}% för {oskadat_serie.index[-1]}.",
+        ))
+
+    # Viltslag med flest årsungar inblandade
+    if len(kvalificerade_arter) >= 3:
+        arsunge_per_art = {}
+        for art in kvalificerade_arter:
+            sub = filtered[filtered["Viltslag"] == art]
+            arsunge_per_art[art] = (sub["Årsunge"] == "Ja").mean() * 100
+        arsunge_serie = pd.Series(arsunge_per_art).sort_values(ascending=False)
+        fakta.append((
+            "🐾", arsunge_serie.index[0],
+            f"har högst andel årsungar inblandade av de vanligare viltslagen — {arsunge_serie.iloc[0]:.0f}% "
+            f"av djuren, mot {arsunge_serie.mean():.0f}% i snitt.",
+        ))
+
     if fakta:
         kort_delar = ['<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.8rem;margin-top:0.3rem;">']
         for i, (ikon, rubrik, text) in enumerate(fakta):
