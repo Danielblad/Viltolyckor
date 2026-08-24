@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 data/*.bak
+data/*.tmp
 .streamlit/secrets.toml
 uppdatering.log
 besoksstatistik.log

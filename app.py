@@ -1,4 +1,5 @@
 import os
+import threading
 from datetime import datetime
 
 import pandas as pd
@@ -188,22 +189,35 @@ KALLA_URL = "viltolycka.se"
 BESOKSLOGG_PATH = os.path.join(APP_DIR, "besoksstatistik.log")
 
 
+@st.cache_resource
+def _besokslas() -> threading.Lock:
+    """En enda delad lås-instans för alla samtidiga sessioner (till skillnad från
+    st.cache_data kopierar st.cache_resource INTE returvärdet — alla anrop, från alla
+    användare, får samma lås-objekt). Krävs eftersom flera användare kan besöka appen
+    samtidigt och annars kan hamna i att skriva till loggfilen på en gång."""
+    return threading.Lock()
+
+
 def logga_besok_och_hamta_antal() -> int:
     """Loggar ett besök (en gång per webbläsarsession) och returnerar totalt antal besök.
 
     OBS: loggen är en lokal fil och nollställs varje gång appen byggs om på nytt (t.ex. vid
     en driftsatt version på Streamlit Community Cloud som byggs om vid en ny commit). Räknar
     alltså besök sedan senaste ombyggnad, inte sedan lanseringen."""
+    las = _besokslas()
     if not st.session_state.get("besok_loggat"):
         st.session_state["besok_loggat"] = True
         try:
-            with open(BESOKSLOGG_PATH, "a", encoding="utf-8") as f:
-                f.write(f"{datetime.now().isoformat(timespec='seconds')}\n")
+            with las:
+                with open(BESOKSLOGG_PATH, "a", encoding="utf-8") as f:
+                    f.write(f"{datetime.now().isoformat(timespec='seconds')}\n")
+                    f.flush()
         except OSError:
             pass
     try:
-        with open(BESOKSLOGG_PATH, encoding="utf-8") as f:
-            return sum(1 for _ in f)
+        with las:
+            with open(BESOKSLOGG_PATH, encoding="utf-8") as f:
+                return sum(1 for _ in f)
     except FileNotFoundError:
         return 0
 

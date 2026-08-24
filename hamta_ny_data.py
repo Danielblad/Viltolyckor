@@ -205,7 +205,12 @@ def main():
     if backup_tagen:
         shutil.copy(DATA_PATH, DATA_PATH + ".bak")
 
-    resultat.to_parquet(DATA_PATH, index=False)
+    # Skriv till en temporär fil och byt sedan namn atomiskt, så att appen (som kan läsa
+    # filen samtidigt, t.ex. lokalt medan detta skript körs) aldrig kan råka läsa en
+    # halvskriven fil.
+    tmp_path = DATA_PATH + ".tmp"
+    resultat.to_parquet(tmp_path, index=False)
+    os.replace(tmp_path, DATA_PATH)
     print(f"\nKlart. {DATA_PATH} innehåller nu {len(resultat):,} rader totalt.".replace(",", " "))
     if backup_tagen:
         print(f"(Föregående version sparad som {DATA_PATH}.bak.)")
