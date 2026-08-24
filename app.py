@@ -623,10 +623,23 @@ with tab_oversikt:
             oskadat_per_art[art] = (sub["Vad har skett med viltet"] == "Bedöms oskadat").mean() * 100
 
         jarnvag_serie = pd.Series(jarnvag_per_art).sort_values(ascending=False)
-        if jarnvag_serie.iloc[0] > jarnvag_serie.iloc[1] * 1.5:
+        # Jämför mot en baslinje (3:e platsen, eller sista om färre än tre arter) istället för bara
+        # tvåan - annars missas fall där TVÅ arter tillsammans sticker ut kraftigt mot resten men
+        # ligger nära varandra (t.ex. björn och örn, båda extremt höga men inte 1,5x isär sinsemellan).
+        baslinje_idx = min(2, len(jarnvag_serie) - 1)
+        baslinje = jarnvag_serie.iloc[baslinje_idx]
+        troskel = max(baslinje * 1.5, 5)
+        utstickare = jarnvag_serie[jarnvag_serie > troskel]
+        if len(utstickare) >= 2:
             fakta.append((
-                "🚂", jarnvag_serie.index[0],
-                f"sticker ut som det viltslag som oftast krockar med tåg — {jarnvag_serie.iloc[0]:.0f}% av "
+                "🚂", f"{utstickare.index[0]} och {utstickare.index[1]}",
+                f"sticker ut kraftigt mot järnväg — {utstickare.iloc[0]:.0f}% respektive {utstickare.iloc[1]:.0f}% "
+                f"av olyckorna sker på järnväg, långt över övriga viltslag i urvalet.",
+            ))
+        elif len(utstickare) == 1:
+            fakta.append((
+                "🚂", utstickare.index[0],
+                f"sticker ut som det viltslag som oftast krockar med tåg — {utstickare.iloc[0]:.0f}% av "
                 f"olyckorna sker på järnväg, klart mer än övriga viltslag i urvalet.",
             ))
 
