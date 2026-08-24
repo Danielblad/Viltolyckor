@@ -286,7 +286,10 @@ def kategoriordning(label: str, fallback_index) -> list:
     return ORDNADE_KATEGORIER.get(label, list(fallback_index))
 
 
-st.set_page_config(page_title="Viltolyckor i Sverige", page_icon="🦌", layout="wide")
+st.set_page_config(
+    page_title="Viltolyckor i Sverige", page_icon="🦌", layout="wide",
+    initial_sidebar_state="collapsed",
+)
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 df = load_data(DATA_PATH, os.path.getmtime(DATA_PATH))
