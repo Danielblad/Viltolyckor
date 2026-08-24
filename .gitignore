@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 data/*.bak
 .streamlit/secrets.toml
+uppdatering.log
+besoksstatistik.log

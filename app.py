@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
@@ -184,6 +185,27 @@ MAX_TABLE_ROWS = 3000
 MAP_HEIGHT = 500
 KALLA_TEXT = "Källa: Nationella viltolycksrådet, viltolycka.se"
 KALLA_URL = "viltolycka.se"
+BESOKSLOGG_PATH = os.path.join(APP_DIR, "besoksstatistik.log")
+
+
+def logga_besok_och_hamta_antal() -> int:
+    """Loggar ett besök (en gång per webbläsarsession) och returnerar totalt antal besök.
+
+    OBS: loggen är en lokal fil och nollställs varje gång appen byggs om på nytt (t.ex. vid
+    en driftsatt version på Streamlit Community Cloud som byggs om vid en ny commit). Räknar
+    alltså besök sedan senaste ombyggnad, inte sedan lanseringen."""
+    if not st.session_state.get("besok_loggat"):
+        st.session_state["besok_loggat"] = True
+        try:
+            with open(BESOKSLOGG_PATH, "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().isoformat(timespec='seconds')}\n")
+        except OSError:
+            pass
+    try:
+        with open(BESOKSLOGG_PATH, encoding="utf-8") as f:
+            return sum(1 for _ in f)
+    except FileNotFoundError:
+        return 0
 
 
 @st.cache_data(show_spinner="Läser in viltolycksdata...")
@@ -238,6 +260,8 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 df = load_data(DATA_PATH, os.path.getmtime(DATA_PATH))
 ORDNADE_KATEGORIER["År"] = sorted(df["ÅrVisning"].dropna().unique())
+
+ANTAL_BESOK = logga_besok_och_hamta_antal()
 
 RAPPORTERINGSFORDROJNING_DAGAR = 60
 SENASTE_KOMPLETTA_DATUM = df["Datum"].max() - pd.Timedelta(days=RAPPORTERINGSFORDROJNING_DAGAR)
@@ -312,6 +336,11 @@ selected_utfall = st.sidebar.multiselect(
 )
 selected_europavag = st.sidebar.multiselect(
     "Europaväg", sorted(df["Europaväg"].dropna().unique()), placeholder="Alla"
+)
+
+st.sidebar.divider()
+st.sidebar.caption(
+    f"👀 {ANTAL_BESOK:,} besök sedan senaste omstart av appen.".replace(",", " ")
 )
 
 filtered = df[(df["År"] >= ar_intervall[0]) & (df["År"] <= ar_intervall[1])]
