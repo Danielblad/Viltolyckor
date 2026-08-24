@@ -180,7 +180,6 @@ div[data-testid="stPlotlyChart"], div[data-testid="stPlotlyChart"] > div, .js-pl
 </style>
 """
 
-MAP_CONFIG = {"displaylogo": False, "modeBarButtonsToRemove": ["lasso2d", "select2d"]}
 MAX_MAP_POINTS = 20000
 MAX_TABLE_ROWS = 3000
 MAP_HEIGHT = 500
@@ -301,6 +300,28 @@ def apply_filter(df: pd.DataFrame, column: str, selected: list) -> pd.DataFrame:
     return df
 
 
+CHART_CONFIG = {
+    "displaylogo": False,
+    "scrollZoom": False,
+    "doubleClick": False,
+    "modeBarButtonsToRemove": [
+        "zoom2d", "pan2d", "select2d", "lasso2d", "zoomIn2d", "zoomOut2d",
+        "autoScale2d", "resetScale2d", "zoomInGeo", "zoomOutGeo",
+    ],
+}
+
+
+def visa_diagram(fig, **kwargs):
+    """Renderar ett Plotly-diagram med all zoom/pan avstängd (dragmode=False +
+    borttagna zoomknappar), så ett svep över diagrammet alltid fortsätter scrolla
+    sidan istället för att fastna i diagrammets egen interaktion — särskilt viktigt
+    på mobil. Hover/tooltips fungerar fortfarande som vanligt."""
+    fig.update_layout(dragmode=False)
+    kwargs.setdefault("width", "stretch")
+    kwargs["config"] = {**CHART_CONFIG, **kwargs.get("config", {})}
+    st.plotly_chart(fig, **kwargs)
+
+
 def kategoriordning(label: str, fallback_index) -> list:
     return ORDNADE_KATEGORIER.get(label, list(fallback_index))
 
@@ -407,6 +428,13 @@ filtered = apply_filter(filtered, "Årsunge", selected_arsunge)
 filtered = apply_filter(filtered, "Vad har skett med viltet", selected_utfall)
 filtered = apply_filter(filtered, "Europaväg", selected_europavag)
 
+INGA_FILTER_AKTIVA = (
+    ar_intervall == (year_min, year_max)
+    and not selected_lan and not selected_kommun and not selected_viltslag
+    and not selected_typ and not selected_kon and not selected_arsunge
+    and not selected_utfall and not selected_europavag
+)
+
 # Kategorikolumner behåller hela df:s ursprungliga kategorilista även efter filtrering
 # (t.ex. alla 291 kommuner, även om urvalet bara innehåller data från en). Utan att städa
 # bort de nu tomma kategorierna skulle value_counts()/groupby m.fl. kunna räkna med
@@ -472,9 +500,8 @@ with tab_oversikt:
         st.info("Allt i det valda urvalet ligger inom den senaste, ännu ofullständiga rapporteringsperioden.")
     else:
         trend = trend_bas.set_index("Datum").resample(freq).size().reset_index(name="Antal")
-        st.plotly_chart(
+        visa_diagram(
             px.line(trend, x="Datum", y="Antal", markers=True, labels=LABELS, title="Djur i viltolyckor över tid"),
-            width="stretch",
         )
 
     visa_som_oversikt = st.radio(
@@ -499,7 +526,7 @@ with tab_oversikt:
             title=f"{y_djur_titel} per viltslag (alla)", color="Viltslag", text="Etikett",
         )
         fig_djur.update_layout(showlegend=False)
-        st.plotly_chart(fig_djur, width="stretch")
+        visa_diagram(fig_djur)
     with c2:
         topp_lan, y_lan, y_lan_titel = _fordelning("Län")
         fig_lan = px.bar(
@@ -507,177 +534,180 @@ with tab_oversikt:
             title=f"{y_lan_titel} per län (alla)", color="Län", text="Etikett",
         )
         fig_lan.update_layout(showlegend=False)
-        st.plotly_chart(fig_lan, width="stretch")
+        visa_diagram(fig_lan)
 
     st.markdown("### 🎲 Visste du att...?")
-    st.caption("Baserat på ditt aktuella filterval ovan — kan se annorlunda ut om du ändrar filtren.")
-
-    def _lan_topplista(mask, min_n=50):
-        total = filtered.groupby("Län", observed=True).size()
-        traff = filtered[mask].groupby("Län", observed=True).size()
-        andel = (traff / total * 100).reindex(total.index).fillna(0)
-        kandidater = andel[total >= min_n]
-        if kandidater.empty:
-            return None
-        topp = kandidater.idxmax()
-        return topp.replace(" län", ""), kandidater.loc[topp]
-
-    fakta = []
-
-    timme_mode = filtered["TimmeVisning"].mode()
-    if not timme_mode.empty:
-        h = timme_mode.iat[0]
-        andel_h = (filtered["TimmeVisning"] == h).mean() * 100
-        fakta.append(("🕒", f"Kl. {h}", f"är den vanligaste timmen på dygnet — {andel_h:.1f}% av alla djur i viltolyckor blir påkörda just då."))
-
-    dag_counts = filtered["Veckodag"].value_counts()
-    if len(dag_counts) >= 2:
-        flest, lugnast = dag_counts.idxmax(), dag_counts.idxmin()
-        fakta.append(("📅", flest, f"är den dag flest djur blir inblandade i viltolyckor, medan {lugnast.lower()} är lugnast."))
-
-    manad_mode = filtered["Månad"].mode()
-    if not manad_mode.empty:
-        m = manad_mode.iat[0]
-        andel_m = (filtered["Månad"] == m).mean() * 100
-        fakta.append(("🍂", m, f"är den mest olycksdrabbade månaden ({andel_m:.1f}% av alla djur) — troligen kopplat till brunsttid och mörkare kvällar."))
-
-    frekvens_bas = filtered[filtered["Datum"] <= SENASTE_KOMPLETTA_DATUM]
-    antal_unika_frekvens = frekvens_bas["OlycksID_Unik"].nunique()
-    if antal_unika_frekvens > 1:
-        dagar = max((frekvens_bas["Datum"].max() - frekvens_bas["Datum"].min()).days, 1)
-        minuter = (dagar * 24 * 60) / antal_unika_frekvens
-        fakta.append(("⏱️", f"Var {minuter:.0f}:e minut", "inträffar i snitt en viltolycka någonstans i det valda urvalet (räknat på unika olyckor, baserat på fullständigt rapporterad data)."))
-
-    res = _lan_topplista(filtered["Vad har skett med viltet"] == "Ej påträffat")
-    if res:
-        lan, andel = res
-        fakta.append(("🚨", lan, f"har högst andel djur som aldrig återfinns — {andel:.1f}% av länets djur klassas som 'Ej påträffat'."))
-
-    res = _lan_topplista(filtered["Årsunge"] == "Ja")
-    if res:
-        lan, andel = res
-        fakta.append(("🐣", lan, f"har högst andel årsungar inblandade i sina viltolyckor — {andel:.1f}%."))
-
-    res = _lan_topplista(filtered["Europaväg"] == "Ja")
-    if res:
-        lan, andel = res
-        fakta.append(("🛣️", lan, f"sticker ut med flest djur inblandade på europaväg — {andel:.1f}% av länets djur."))
-
-    viltslag_counts = filtered["Viltslag"].value_counts()
-    if not viltslag_counts.empty:
-        sallsynt = viltslag_counts.idxmin()
-        fakta.append(("🦫", sallsynt, f"är det mest sällsynta viltslaget i urvalet, med bara {viltslag_counts.min():,} registrerade djur.".replace(",", " ")))
-
-    ar_lista = sorted(int(a) for a in filtered["År"].dropna().unique())
-    if len(ar_lista) >= 2:
-        forsta_ar, sista_ar = ar_lista[0], ar_lista[-1]
-        sista_datum = filtered.loc[filtered["År"] == sista_ar, "Datum"].max()
-        if (sista_datum.month, sista_datum.day) < (12, 25) and len(ar_lista) >= 3:
-            sista_ar = ar_lista[-2]
-        antal_forsta = filtered.loc[filtered["År"] == forsta_ar, "OlycksID_Unik"].nunique()
-        antal_sista = filtered.loc[filtered["År"] == sista_ar, "OlycksID_Unik"].nunique()
-        if antal_forsta > 0 and sista_ar != forsta_ar:
-            forandring = (antal_sista - antal_forsta) / antal_forsta * 100
-            fakta.append(("📈", f"{forandring:+.0f}%", f"har antalet viltolyckor förändrats mellan {forsta_ar} och {sista_ar} (hela kalenderår)."))
-
-    # Vilket viltslag dominerar mest
-    if not viltslag_counts.empty:
-        vanligast_art = viltslag_counts.idxmax()
-        andel_vanligast = viltslag_counts.max() / len(filtered) * 100
-        if andel_vanligast > 50:
-            fakta.append((
-                "🦌", vanligast_art,
-                f"står ensamt för {andel_vanligast:.0f}% av alla viltolyckor i urvalet — fler än alla andra viltslag tillsammans.",
-            ))
-        else:
-            fakta.append((
-                "🦌", vanligast_art,
-                f"är det klart vanligaste viltslaget i urvalet — {andel_vanligast:.0f}% av alla djur.",
-            ))
-
-    # Vanligaste och sällsyntaste utfallet (exkl. "Olycksplats ej påträffad" som bara funnits sedan feb 2026
-    # och därför alltid ser artificiellt sällsynt ut i en jämförelse över hela tidsperioden)
-    utfall_counts = filtered.loc[
-        filtered["Vad har skett med viltet"] != "Olycksplats ej påträffad", "Vad har skett med viltet"
-    ].value_counts()
-    utfall_counts = utfall_counts[utfall_counts > 0]  # kategorityp kan annars lämna kvar 0-räknade "spökkategorier"
-    if len(utfall_counts) >= 2:
-        totalt_utfall = utfall_counts.sum()
-        vanligast_utfall = utfall_counts.idxmax()
-        sallsynt_utfall = utfall_counts.idxmin()
-        fakta.append((
-            "☠️", vanligast_utfall,
-            f"är det vanligaste utfallet för påkörda djur — {utfall_counts.max() / totalt_utfall:.0%} av alla djur, "
-            f"jämfört med bara {utfall_counts.min() / totalt_utfall:.0%} för '{sallsynt_utfall}' (sällsyntast).",
-        ))
-
-    # Viltslag som sticker ut mot tåg respektive överlevnadschans (kräver rimligt stort underlag per art)
-    ARTUNDERLAG_MIN = 200
-    kvalificerade_arter = viltslag_counts[viltslag_counts >= ARTUNDERLAG_MIN].index
-    if len(kvalificerade_arter) >= 3:
-        jarnvag_per_art = {}
-        oskadat_per_art = {}
-        for art in kvalificerade_arter:
-            sub = filtered[filtered["Viltslag"] == art]
-            jarnvag_per_art[art] = (sub["Typ av olycka"] == "Järnväg").mean() * 100
-            oskadat_per_art[art] = (sub["Vad har skett med viltet"] == "Bedöms oskadat").mean() * 100
-
-        jarnvag_serie = pd.Series(jarnvag_per_art).sort_values(ascending=False)
-        # Jämför mot en baslinje (3:e platsen, eller sista om färre än tre arter) istället för bara
-        # tvåan - annars missas fall där TVÅ arter tillsammans sticker ut kraftigt mot resten men
-        # ligger nära varandra (t.ex. björn och örn, båda extremt höga men inte 1,5x isär sinsemellan).
-        baslinje_idx = min(2, len(jarnvag_serie) - 1)
-        baslinje = jarnvag_serie.iloc[baslinje_idx]
-        troskel = max(baslinje * 1.5, 5)
-        utstickare = jarnvag_serie[jarnvag_serie > troskel]
-        if len(utstickare) >= 2:
-            fakta.append((
-                "🚂", f"{utstickare.index[0]} och {utstickare.index[1]}",
-                f"sticker ut kraftigt mot järnväg — {utstickare.iloc[0]:.0f}% respektive {utstickare.iloc[1]:.0f}% "
-                f"av olyckorna sker på järnväg, långt över övriga viltslag i urvalet.",
-            ))
-        elif len(utstickare) == 1:
-            fakta.append((
-                "🚂", utstickare.index[0],
-                f"sticker ut som det viltslag som oftast krockar med tåg — {utstickare.iloc[0]:.0f}% av "
-                f"olyckorna sker på järnväg, klart mer än övriga viltslag i urvalet.",
-            ))
-
-        oskadat_serie = pd.Series(oskadat_per_art).sort_values(ascending=False)
-        fakta.append((
-            "💚", oskadat_serie.index[0],
-            f"har högst chans att klara sig oskadd av de vanligare viltslagen — {oskadat_serie.iloc[0]:.0f}% "
-            f"bedöms oskadade, jämfört med {oskadat_serie.iloc[-1]:.0f}% för {oskadat_serie.index[-1]}.",
-        ))
-
-    # Viltslag med flest årsungar inblandade
-    if len(kvalificerade_arter) >= 3:
-        arsunge_per_art = {}
-        for art in kvalificerade_arter:
-            sub = filtered[filtered["Viltslag"] == art]
-            arsunge_per_art[art] = (sub["Årsunge"] == "Ja").mean() * 100
-        arsunge_serie = pd.Series(arsunge_per_art).sort_values(ascending=False)
-        fakta.append((
-            "🐾", arsunge_serie.index[0],
-            f"har högst andel årsungar inblandade av de vanligare viltslagen — {arsunge_serie.iloc[0]:.0f}% "
-            f"av djuren, mot {arsunge_serie.mean():.0f}% i snitt.",
-        ))
-
-    if fakta:
-        kort_delar = ['<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.8rem;margin-top:0.3rem;">']
-        for i, (ikon, rubrik, text) in enumerate(fakta):
-            farg = PALETTE[i % len(PALETTE)]
-            kort_delar.append(
-                f'<div class="fact-card" style="border-left:4px solid {farg};">'
-                f'<div style="font-size:1.4rem;line-height:1;">{ikon}</div>'
-                f'<div style="font-weight:700;font-size:1rem;margin-top:0.3rem;font-family:\'Poppins\',sans-serif;">{rubrik}</div>'
-                f'<div style="font-size:0.85rem;color:#444;margin-top:0.2rem;">{text}</div>'
-                f"</div>"
-            )
-        kort_delar.append("</div>")
-        st.markdown("".join(kort_delar), unsafe_allow_html=True)
+    if not INGA_FILTER_AKTIVA:
+        st.info("Fun facts visas bara utan aktiv filtrering just nu, för att undvika missvisande siffror vid vissa urval. Rensa filtren i sidopanelen för att se dem.")
     else:
-        st.info("För få djur i urvalet för att beräkna fun facts. Justera filtren i sidopanelen.")
+        st.caption("Baserat på ditt aktuella filterval ovan — kan se annorlunda ut om du ändrar filtren.")
+
+        def _lan_topplista(mask, min_n=50):
+            total = filtered.groupby("Län", observed=True).size()
+            traff = filtered[mask].groupby("Län", observed=True).size()
+            andel = (traff / total * 100).reindex(total.index).fillna(0)
+            kandidater = andel[total >= min_n]
+            if kandidater.empty:
+                return None
+            topp = kandidater.idxmax()
+            return topp, kandidater.loc[topp]
+
+        fakta = []
+
+        timme_mode = filtered["TimmeVisning"].mode()
+        if not timme_mode.empty:
+            h = timme_mode.iat[0]
+            andel_h = (filtered["TimmeVisning"] == h).mean() * 100
+            fakta.append(("🕒", f"Kl. {h}", f"är den vanligaste timmen på dygnet — {andel_h:.1f}% av alla djur i viltolyckor blir påkörda just då."))
+
+        dag_counts = filtered["Veckodag"].value_counts()
+        if len(dag_counts) >= 2:
+            flest, lugnast = dag_counts.idxmax(), dag_counts.idxmin()
+            fakta.append(("📅", flest, f"är den dag flest djur blir inblandade i viltolyckor, medan {lugnast.lower()} är lugnast."))
+
+        manad_mode = filtered["Månad"].mode()
+        if not manad_mode.empty:
+            m = manad_mode.iat[0]
+            andel_m = (filtered["Månad"] == m).mean() * 100
+            fakta.append(("🍂", m, f"är den mest olycksdrabbade månaden ({andel_m:.1f}% av alla djur) — troligen kopplat till brunsttid och mörkare kvällar."))
+
+        frekvens_bas = filtered[filtered["Datum"] <= SENASTE_KOMPLETTA_DATUM]
+        antal_unika_frekvens = frekvens_bas["OlycksID_Unik"].nunique()
+        if antal_unika_frekvens > 1:
+            dagar = max((frekvens_bas["Datum"].max() - frekvens_bas["Datum"].min()).days, 1)
+            minuter = (dagar * 24 * 60) / antal_unika_frekvens
+            fakta.append(("⏱️", f"Var {minuter:.0f}:e minut", "inträffar i snitt en viltolycka någonstans i det valda urvalet (räknat på unika olyckor, baserat på fullständigt rapporterad data)."))
+
+        res = _lan_topplista(filtered["Vad har skett med viltet"] == "Ej påträffat")
+        if res:
+            lan, andel = res
+            fakta.append(("🚨", lan, f"har högst andel djur som aldrig återfinns — {andel:.1f}% av länets djur klassas som 'Ej påträffat'."))
+
+        res = _lan_topplista(filtered["Årsunge"] == "Ja")
+        if res:
+            lan, andel = res
+            fakta.append(("🐣", lan, f"har högst andel årsungar inblandade i sina viltolyckor — {andel:.1f}%."))
+
+        res = _lan_topplista(filtered["Europaväg"] == "Ja")
+        if res:
+            lan, andel = res
+            fakta.append(("🛣️", lan, f"sticker ut med flest djur inblandade på europaväg — {andel:.1f}% av länets djur."))
+
+        viltslag_counts = filtered["Viltslag"].value_counts()
+        if not viltslag_counts.empty:
+            sallsynt = viltslag_counts.idxmin()
+            fakta.append(("🦫", sallsynt, f"är det mest sällsynta viltslaget i urvalet, med bara {viltslag_counts.min():,} registrerade djur.".replace(",", " ")))
+
+        ar_lista = sorted(int(a) for a in filtered["År"].dropna().unique())
+        if len(ar_lista) >= 2:
+            forsta_ar, sista_ar = ar_lista[0], ar_lista[-1]
+            sista_datum = filtered.loc[filtered["År"] == sista_ar, "Datum"].max()
+            if (sista_datum.month, sista_datum.day) < (12, 25) and len(ar_lista) >= 3:
+                sista_ar = ar_lista[-2]
+            antal_forsta = filtered.loc[filtered["År"] == forsta_ar, "OlycksID_Unik"].nunique()
+            antal_sista = filtered.loc[filtered["År"] == sista_ar, "OlycksID_Unik"].nunique()
+            if antal_forsta > 0 and sista_ar != forsta_ar:
+                forandring = (antal_sista - antal_forsta) / antal_forsta * 100
+                fakta.append(("📈", f"{forandring:+.0f}%", f"har antalet viltolyckor förändrats mellan {forsta_ar} och {sista_ar} (hela kalenderår)."))
+
+        # Vilket viltslag dominerar mest
+        if not viltslag_counts.empty:
+            vanligast_art = viltslag_counts.idxmax()
+            andel_vanligast = viltslag_counts.max() / len(filtered) * 100
+            if andel_vanligast > 50:
+                fakta.append((
+                    "🦌", vanligast_art,
+                    f"står ensamt för {andel_vanligast:.0f}% av alla viltolyckor i urvalet — fler än alla andra viltslag tillsammans.",
+                ))
+            else:
+                fakta.append((
+                    "🦌", vanligast_art,
+                    f"är det klart vanligaste viltslaget i urvalet — {andel_vanligast:.0f}% av alla djur.",
+                ))
+
+        # Vanligaste och sällsyntaste utfallet (exkl. "Olycksplats ej påträffad" som bara funnits sedan feb 2026
+        # och därför alltid ser artificiellt sällsynt ut i en jämförelse över hela tidsperioden)
+        utfall_counts = filtered.loc[
+            filtered["Vad har skett med viltet"] != "Olycksplats ej påträffad", "Vad har skett med viltet"
+        ].value_counts()
+        utfall_counts = utfall_counts[utfall_counts > 0]  # kategorityp kan annars lämna kvar 0-räknade "spökkategorier"
+        if len(utfall_counts) >= 2:
+            totalt_utfall = utfall_counts.sum()
+            vanligast_utfall = utfall_counts.idxmax()
+            sallsynt_utfall = utfall_counts.idxmin()
+            fakta.append((
+                "☠️", vanligast_utfall,
+                f"är det vanligaste utfallet för påkörda djur — {utfall_counts.max() / totalt_utfall:.0%} av alla djur, "
+                f"jämfört med bara {utfall_counts.min() / totalt_utfall:.0%} för '{sallsynt_utfall}' (sällsyntast).",
+            ))
+
+        # Viltslag som sticker ut mot tåg respektive överlevnadschans (kräver rimligt stort underlag per art)
+        ARTUNDERLAG_MIN = 200
+        kvalificerade_arter = viltslag_counts[viltslag_counts >= ARTUNDERLAG_MIN].index
+        if len(kvalificerade_arter) >= 3:
+            jarnvag_per_art = {}
+            oskadat_per_art = {}
+            for art in kvalificerade_arter:
+                sub = filtered[filtered["Viltslag"] == art]
+                jarnvag_per_art[art] = (sub["Typ av olycka"] == "Järnväg").mean() * 100
+                oskadat_per_art[art] = (sub["Vad har skett med viltet"] == "Bedöms oskadat").mean() * 100
+
+            jarnvag_serie = pd.Series(jarnvag_per_art).sort_values(ascending=False)
+            # Jämför mot en baslinje (3:e platsen, eller sista om färre än tre arter) istället för bara
+            # tvåan - annars missas fall där TVÅ arter tillsammans sticker ut kraftigt mot resten men
+            # ligger nära varandra (t.ex. björn och örn, båda extremt höga men inte 1,5x isär sinsemellan).
+            baslinje_idx = min(2, len(jarnvag_serie) - 1)
+            baslinje = jarnvag_serie.iloc[baslinje_idx]
+            troskel = max(baslinje * 1.5, 5)
+            utstickare = jarnvag_serie[jarnvag_serie > troskel]
+            if len(utstickare) >= 2:
+                fakta.append((
+                    "🚂", f"{utstickare.index[0]} och {utstickare.index[1]}",
+                    f"sticker ut kraftigt mot järnväg — {utstickare.iloc[0]:.0f}% respektive {utstickare.iloc[1]:.0f}% "
+                    f"av olyckorna sker på järnväg, långt över övriga viltslag i urvalet.",
+                ))
+            elif len(utstickare) == 1:
+                fakta.append((
+                    "🚂", utstickare.index[0],
+                    f"sticker ut som det viltslag som oftast krockar med tåg — {utstickare.iloc[0]:.0f}% av "
+                    f"olyckorna sker på järnväg, klart mer än övriga viltslag i urvalet.",
+                ))
+
+            oskadat_serie = pd.Series(oskadat_per_art).sort_values(ascending=False)
+            fakta.append((
+                "💚", oskadat_serie.index[0],
+                f"har högst chans att klara sig oskadd av de vanligare viltslagen — {oskadat_serie.iloc[0]:.0f}% "
+                f"bedöms oskadade, jämfört med {oskadat_serie.iloc[-1]:.0f}% för {oskadat_serie.index[-1]}.",
+            ))
+
+        # Viltslag med flest årsungar inblandade
+        if len(kvalificerade_arter) >= 3:
+            arsunge_per_art = {}
+            for art in kvalificerade_arter:
+                sub = filtered[filtered["Viltslag"] == art]
+                arsunge_per_art[art] = (sub["Årsunge"] == "Ja").mean() * 100
+            arsunge_serie = pd.Series(arsunge_per_art).sort_values(ascending=False)
+            fakta.append((
+                "🐾", arsunge_serie.index[0],
+                f"har högst andel årsungar inblandade av de vanligare viltslagen — {arsunge_serie.iloc[0]:.0f}% "
+                f"av djuren, mot {arsunge_serie.mean():.0f}% i snitt.",
+            ))
+
+        if fakta:
+            kort_delar = ['<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.8rem;margin-top:0.3rem;">']
+            for i, (ikon, rubrik, text) in enumerate(fakta):
+                farg = PALETTE[i % len(PALETTE)]
+                kort_delar.append(
+                    f'<div class="fact-card" style="border-left:4px solid {farg};">'
+                    f'<div style="font-size:1.4rem;line-height:1;">{ikon}</div>'
+                    f'<div style="font-weight:700;font-size:1rem;margin-top:0.3rem;font-family:\'Poppins\',sans-serif;">{rubrik}</div>'
+                    f'<div style="font-size:0.85rem;color:#444;margin-top:0.2rem;">{text}</div>'
+                    f"</div>"
+                )
+            kort_delar.append("</div>")
+            st.markdown("".join(kort_delar), unsafe_allow_html=True)
+        else:
+            st.info("För få djur i urvalet för att beräkna fun facts. Justera filtren i sidopanelen.")
 
 with tab_lokal:
     st.markdown("#### Hitta den lokala vinkeln")
@@ -811,7 +841,7 @@ with tab_lokal:
                 color_discrete_sequence=["#C62828", "#455A64"], text_auto=".1f",
             )
             fig_lokal.update_layout(showlegend=False)
-            st.plotly_chart(fig_lokal, width="stretch")
+            visa_diagram(fig_lokal)
 
             if len(resultat) > 1:
                 st.markdown("**Andra fakta värda att nämna**")
@@ -911,7 +941,7 @@ with tab_utforska:
         )
         if color_col:
             fig.update_traces(textposition="inside", insidetextfont=dict(color="white", size=12))
-        st.plotly_chart(fig, width="stretch")
+        visa_diagram(fig)
 
 with tab_jamfor:
     st.markdown("#### Jämför län eller kommuner sida vid sida")
@@ -959,7 +989,7 @@ with tab_jamfor:
         )
         fig.update_traces(textposition="outside", textangle=0, textfont=dict(size=11))
         fig.update_layout(uniformtext_minsize=8)
-        st.plotly_chart(fig, width="stretch")
+        visa_diagram(fig)
 
         st.markdown("**Tabell**")
         pivot = agg.pivot(index=niva_col, columns=jamfor_col, values=y_val).fillna(0)
@@ -998,13 +1028,12 @@ with tab_korstabell:
         cross = pd.crosstab(cross_df[row_col], cross_df[col_col])
         cross = cross.reindex(index=[c for c in top_rows if c in cross.index])
         cross = cross.reindex(columns=[c for c in top_cols if c in cross.columns])
-        st.plotly_chart(
+        visa_diagram(
             px.imshow(
                 cross, text_auto=True, aspect="auto", color_continuous_scale="Greens",
                 labels={"x": col_label, "y": row_label, "color": "Antal djur"},
                 title=f"{row_label} × {col_label}",
             ),
-            width="stretch",
         )
 
 with tab_karta:
@@ -1032,7 +1061,7 @@ with tab_karta:
                 map_style="open-street-map", height=MAP_HEIGHT, color_continuous_scale="YlOrRd",
                 labels=LABELS,
             )
-            st.plotly_chart(fig, width="stretch", config=MAP_CONFIG)
+            visa_diagram(fig)
         else:
             color_arg = None if map_color_label == "Ingen" else DIMENSIONS[map_color_label]
             fig = px.scatter_map(
@@ -1040,7 +1069,7 @@ with tab_karta:
                 zoom=4, height=MAP_HEIGHT, map_style="open-street-map", opacity=0.6,
                 labels=LABELS,
             )
-            st.plotly_chart(fig, width="stretch", config=MAP_CONFIG)
+            visa_diagram(fig)
 
 with tab_data:
     st.markdown("#### Filtrerad rådata")
