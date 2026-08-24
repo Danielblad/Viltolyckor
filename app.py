@@ -68,114 +68,94 @@ LABELS = {**COLUMN_TO_LABEL, **EXTRA_LABELS}
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
 
 :root {
-    --skog: #22C55E;
-    --skog-mork: #15803D;
-    --korall: #FF6B6B;
-    --sol: #FFC93C;
-    --himmel: #38BDF8;
-    --lila: #A78BFA;
-    --bakgrund: #FBFBF6;
+    --skog: #1B7A43;
+    --skog-mork: #0F5C31;
+    --accent: #C62828;
+    --text: #1F2937;
+    --bakgrund: #F7F8F6;
 }
 
-html, body, .stApp { font-family: 'Nunito', sans-serif; background-color: var(--bakgrund); }
-h1, h2, h3, h4, .banner h1 { font-family: 'Baloo 2', sans-serif; }
+html, body, .stApp { font-family: 'Nunito', sans-serif; background-color: var(--bakgrund); color: var(--text); }
+h1, h2, h3, h4, .banner h1 { font-family: 'Poppins', sans-serif; font-weight: 600; }
 #MainMenu, footer { visibility: hidden; }
 
 /* Låt allt innehåll krympa med skärmen istället för att tvinga fram horisontell scroll */
 .block-container { max-width: 100%; padding-left: 1rem; padding-right: 1rem; }
 
 .banner {
-    background: linear-gradient(120deg, var(--skog) 0%, var(--skog-mork) 55%, #0D9488 100%);
-    padding: 1.5rem 2rem;
-    border-radius: 26px;
+    background: linear-gradient(100deg, var(--skog) 0%, var(--skog-mork) 100%);
+    padding: 1.3rem 1.8rem;
+    border-radius: 12px;
     color: white;
-    margin-bottom: 1.3rem;
-    box-shadow: 0 10px 28px rgba(34,197,94,0.28);
+    margin-bottom: 1.2rem;
 }
-.banner h1 { margin: 0; font-size: clamp(1.4rem, 4vw, 2.1rem); line-height: 1.2; font-weight: 700; }
-.banner p { margin: 0.35rem 0 0 0; opacity: 0.95; font-size: clamp(0.8rem, 2.3vw, 1rem); }
-
-.wiggle { display: inline-block; animation: wiggle 2.4s ease-in-out infinite; }
-@keyframes wiggle {
-    0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(-10deg); }
-    75% { transform: rotate(10deg); }
-}
+.banner h1 { margin: 0; font-size: clamp(1.3rem, 3.4vw, 1.8rem); line-height: 1.2; }
+.banner p { margin: 0.3rem 0 0 0; opacity: 0.92; font-size: clamp(0.8rem, 2.1vw, 0.95rem); }
 
 div[data-testid="stMetric"] {
     background-color: white;
-    border-top: 5px solid var(--skog);
-    border-radius: 18px;
-    padding: 0.85rem 1.1rem;
-    box-shadow: 0 4px 14px rgba(21,128,61,0.08);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border-left: 4px solid var(--skog);
+    border-radius: 8px;
+    padding: 0.8rem 1.05rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
-div[data-testid="stMetric"]:hover { transform: translateY(-4px); box-shadow: 0 10px 22px rgba(21,128,61,0.16); }
 div[data-testid="stMetricValue"] {
-    font-size: clamp(0.95rem, 2.4vw, 1.5rem); font-family: 'Baloo 2', sans-serif;
+    font-size: clamp(0.95rem, 2.4vw, 1.4rem); font-family: 'Poppins', sans-serif; font-weight: 600;
     white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
     line-height: 1.2;
 }
 div[data-testid="stMetricValue"] > div { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
 
-div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) > div:nth-of-type(6n+1) div[data-testid="stMetric"] { border-top-color: var(--skog); }
-div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) > div:nth-of-type(6n+2) div[data-testid="stMetric"] { border-top-color: var(--korall); }
-div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) > div:nth-of-type(6n+3) div[data-testid="stMetric"] { border-top-color: var(--sol); }
-div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) > div:nth-of-type(6n+4) div[data-testid="stMetric"] { border-top-color: var(--himmel); }
-div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) > div:nth-of-type(6n+5) div[data-testid="stMetric"] { border-top-color: var(--lila); }
-div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) > div:nth-of-type(6n+6) div[data-testid="stMetric"] { border-top-color: #FB923C; }
-
 .stTabs [data-baseweb="tab-list"] {
-    flex-wrap: nowrap; overflow-x: auto; gap: 4px;
-    background: #EAF7EA; padding: 6px; border-radius: 999px;
+    flex-wrap: nowrap; overflow-x: auto; gap: 2px;
+    background: #EEF1EC; padding: 4px; border-radius: 8px;
 }
 .stTabs [data-baseweb="tab"] {
-    font-weight: 700; font-size: clamp(0.8rem, 2vw, 1rem); white-space: nowrap;
-    border-radius: 999px !important; padding: 0.45rem 1.1rem !important;
-    transition: all 0.2s ease;
+    font-weight: 600; font-size: clamp(0.8rem, 2vw, 0.95rem); white-space: nowrap;
+    border-radius: 6px !important; padding: 0.4rem 1rem !important;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 .stTabs [aria-selected="true"] { background: var(--skog) !important; color: white !important; }
 .stTabs [data-baseweb="tab-highlight"] { display: none; }
 .stTabs [data-baseweb="tab-border"] { display: none; }
 
 .stButton button, .stDownloadButton button {
-    border-radius: 999px !important; font-weight: 700 !important; border: none !important;
-    background: linear-gradient(135deg, var(--skog) 0%, var(--skog-mork) 100%) !important;
-    color: white !important; transition: transform 0.15s ease, box-shadow 0.15s ease !important;
-    box-shadow: 0 4px 12px rgba(21,128,61,0.25) !important;
+    border-radius: 6px !important; font-weight: 600 !important; border: none !important;
+    background: var(--skog-mork) !important;
+    color: white !important; transition: background-color 0.15s ease !important;
 }
-.stButton button:hover, .stDownloadButton button:hover { transform: scale(1.05) translateY(-1px); }
+.stButton button:hover, .stDownloadButton button:hover { background: var(--skog) !important; }
 
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #EAF7EA 0%, #F7FBF2 100%);
-    border-right: 3px solid #DCF2D8;
+    background: #F1F4EF;
+    border-right: 1px solid #DDE3D8;
 }
 
 .fact-card {
-    background: white; border-radius: 16px; padding: 0.9rem 1.1rem;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.07); transition: transform 0.15s ease, box-shadow 0.15s ease;
+    background: white; border-radius: 8px; padding: 0.85rem 1.05rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: box-shadow 0.15s ease;
 }
-.fact-card:hover { transform: translateY(-3px) rotate(-0.5deg); box-shadow: 0 8px 18px rgba(0,0,0,0.12); }
+.fact-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
 
 .standout-card {
-    background: white; border-radius: 18px; padding: 1.2rem 1.5rem;
-    box-shadow: 0 6px 18px rgba(198,40,40,0.15); margin-bottom: 1rem;
+    background: white; border-radius: 8px; padding: 1.1rem 1.4rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 1rem;
 }
 
 .promo-banner {
-    background: linear-gradient(120deg, var(--korall) 0%, var(--sol) 100%);
-    border-radius: 20px; padding: 1rem 1.5rem; color: white; margin-bottom: 1.3rem;
+    background: white; border-left: 4px solid var(--accent);
+    border-radius: 8px; padding: 0.9rem 1.4rem; color: var(--text); margin-bottom: 1.2rem;
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
-    box-shadow: 0 6px 18px rgba(255,107,107,0.25);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 /* Mobil/smal skärm: mindre marginaler och tätare kort så mer ryms utan att klippas */
 @media (max-width: 640px) {
     .block-container { padding-top: 1.5rem; padding-left: 0.6rem; padding-right: 0.6rem; }
-    .banner { padding: 1.1rem 1.3rem; border-radius: 18px; }
+    .banner { padding: 1rem 1.2rem; border-radius: 10px; }
     div[data-testid="stMetric"] { padding: 0.55rem 0.75rem; }
 }
 </style>
@@ -321,7 +301,7 @@ ANTAL_UNIKA_OLYCKOR_TOTALT = df["OlycksID_Unik"].nunique()
 st.markdown(
     f"""
     <div class="banner">
-        <h1><span class="wiggle">🦌</span> Viltolyckor i Sverige</h1>
+        <h1>🦌 Viltolyckor i Sverige</h1>
         <p>Utforska {len(df):,} djur inblandade i {ANTAL_UNIKA_OLYCKOR_TOTALT:,} registrerade viltolyckor,
         {df['Datum'].min():%Y-%m-%d} – {df['Datum'].max():%Y-%m-%d}.
         Filtrera i sidopanelen och välj flik för olika sätt att analysera datan.</p>
@@ -417,25 +397,17 @@ if filtered.empty:
     st.warning("Inga djur matchar de valda filtren. Justera filtren i sidopanelen.")
     st.stop()
 
-k1, k2, k3, k4, k5, k6 = st.columns(6)
+k1, k2, k3 = st.columns(3)
 k1.metric(
     "🦌 Antal djur i olyckor", f"{len(filtered):,}".replace(",", " "),
-    help="Varje rad i rådatan är ett djur. Se '🚓 Varav unika olyckor' för antalet faktiska olyckstillfällen.",
+    help="Varje rad i rådatan är ett djur. Se 'Varav unika olyckor' för antalet faktiska olyckstillfällen.",
 )
 antal_unika = filtered["OlycksID_Unik"].nunique()
 k2.metric(
-    "🚓 Varav unika olyckor", f"{antal_unika:,}".replace(",", " "),
+    "Varav unika olyckor", f"{antal_unika:,}".replace(",", " "),
     help="Sedan 2021 kan flera djur rapporteras på samma olyckstillfälle (samma OlycksID), så detta tal kan vara lägre än antal djur.",
 )
-k3.metric("🥇 Vanligaste viltslag", filtered["Viltslag"].mode().iat[0])
-k4.metric("📍 Vanligaste län", filtered["Län"].mode().iat[0].replace(" län", ""))
-vag_andel = (filtered["Typ av olycka"] == "Väg").mean()
-k5.metric(
-    "🛣️ Andel på väg (resten järnväg)",
-    f"{vag_andel:.0%}",
-    help=f"{vag_andel:.0%} av djuren var inblandade i olyckor på väg, resterande {1 - vag_andel:.0%} var järnvägsolyckor.",
-)
-k6.metric("🐣 Andel årsungar", f"{(filtered['Årsunge'] == 'Ja').mean():.0%}")
+k3.metric("Vanligaste viltslag", filtered["Viltslag"].mode().iat[0])
 
 tab_oversikt, tab_lokal, tab_utforska, tab_jamfor, tab_korstabell, tab_karta, tab_data = st.tabs(
     ["🏠 Översikt", "📰 Lokal vinkel", "🔍 Utforska", "⚖️ Jämför", "🔀 Korstabell", "🗺️ Karta", "📄 Data"]
@@ -453,8 +425,8 @@ with tab_oversikt:
         """
         <div class="promo-banner">
             <div>
-                <div style="font-size:1.15rem;font-weight:800;font-family:'Baloo 2',sans-serif;">
-                    <span class="wiggle">📰</span> Nytt: Hitta din lokala vinkel
+                <div style="font-size:1.05rem;font-weight:700;font-family:'Poppins',sans-serif;color:var(--accent);">
+                    📰 Nytt: Hitta din lokala vinkel
                 </div>
                 <div style="font-size:0.92rem;opacity:0.97;margin-top:0.2rem;">
                     Välj ditt län eller din kommun och se exakt vilket mått det sticker ut på i landet —
@@ -588,9 +560,9 @@ with tab_oversikt:
         for i, (ikon, rubrik, text) in enumerate(fakta):
             farg = PALETTE[i % len(PALETTE)]
             kort_delar.append(
-                f'<div class="fact-card" style="border-left:5px solid {farg};">'
-                f'<div style="font-size:1.6rem;line-height:1;">{ikon}</div>'
-                f'<div style="font-weight:800;font-size:1.05rem;margin-top:0.3rem;font-family:\'Baloo 2\',sans-serif;">{rubrik}</div>'
+                f'<div class="fact-card" style="border-left:4px solid {farg};">'
+                f'<div style="font-size:1.4rem;line-height:1;">{ikon}</div>'
+                f'<div style="font-weight:700;font-size:1rem;margin-top:0.3rem;font-family:\'Poppins\',sans-serif;">{rubrik}</div>'
                 f'<div style="font-size:0.85rem;color:#444;margin-top:0.2rem;">{text}</div>'
                 f"</div>"
             )
@@ -703,9 +675,9 @@ with tab_lokal:
             namn, e = resultat[0]
             st.markdown(
                 f"""
-                <div class="standout-card" style="border-left:6px solid #C62828;">
-                    <div style="font-size:0.85rem;color:#777;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">🎯 Sticker ut mest</div>
-                    <div style="font-size:1.3rem;font-weight:800;margin-top:0.3rem;font-family:'Baloo 2',sans-serif;">
+                <div class="standout-card" style="border-left:4px solid #C62828;">
+                    <div style="font-size:0.8rem;color:#777;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Sticker ut mest</div>
+                    <div style="font-size:1.2rem;font-weight:600;margin-top:0.3rem;font-family:'Poppins',sans-serif;">
                         {valt_omrade} har {_riktningstext(e)} {namn} av landets {e['n']} {niva_lokal.lower()}
                     </div>
                     <div style="font-size:1rem;color:#333;margin-top:0.4rem;">
