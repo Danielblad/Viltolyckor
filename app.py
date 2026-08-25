@@ -109,16 +109,22 @@ div[data-testid="stMetricValue"] {
 }
 div[data-testid="stMetricValue"] > div { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
 
-.stTabs [data-baseweb="tab-list"] {
+.stTabs [role="tablist"], .stTabs [data-baseweb="tab-list"] {
     flex-wrap: nowrap; overflow-x: auto; gap: 2px;
     background: #EEF1EC; padding: 4px; border-radius: 8px;
 }
-.stTabs [data-baseweb="tab"] {
+.stTabs [role="tab"], .stTabs [data-baseweb="tab"] {
     font-weight: 600; font-size: clamp(0.8rem, 2vw, 0.95rem); white-space: nowrap;
     border-radius: 6px !important; padding: 0.4rem 1rem !important;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
-.stTabs [aria-selected="true"] { background: var(--skog) !important; color: white !important; }
+.stTabs [role="tab"][aria-selected="true"], .stTabs [data-baseweb="tab"][aria-selected="true"] {
+    background: var(--skog) !important; color: white !important;
+}
+/* Den inbyggda "glidande" markören mäts fram med JS och kan hamna fel storlek
+   (t.ex. innan webbfonten hunnit laddas) så att den inte täcker hela texten.
+   Bakgrunden sätts istället direkt på fliken ovan, så markören döljs helt. */
+.stTabs .react-aria-SelectionIndicator { display: none !important; }
 .stTabs [data-baseweb="tab-highlight"] { display: none; }
 .stTabs [data-baseweb="tab-border"] { display: none; }
 
@@ -743,7 +749,7 @@ with tab_lokal:
             _andel(filtered["Vad har skett med viltet"] == utfall, f"andel med utfallet '{utfall}'")
 
         # Djuregenskaper och omständigheter
-        _andel(filtered["Årsunge"] == "Ja", "andel årsungar bland de påkörda djuren")
+        _andel(filtered["Årsunge"] == "Ja", "andel årsungar")
         _andel(filtered["Europaväg"] == "Ja", "andel olyckor på europaväg")
         _andel(filtered["Typ av olycka"] == "Väg", "andel olyckor på väg (jämfört med järnväg)")
         _andel(filtered["Viltslag"].isin(ROVDJUR), "andel rovdjursolyckor (varg/björn/lo/järv)")
@@ -751,9 +757,9 @@ with tab_lokal:
 
         # Artsammansättning — vilka viltslag är över-/underrepresenterade i området
         for art in filtered["Viltslag"].dropna().unique():
-            _andel(filtered["Viltslag"] == art, f"andel av djuren som är {art.lower()}")
+            _andel(filtered["Viltslag"] == art, f"andel {art.lower()}")
 
-        matt["andel av alla djur i landet"] = (total / total.sum() * 100)[
+        matt["andel av det totala antalet djur i olyckor"] = (total / total.sum() * 100)[
             (total / total.sum() * 100).index.isin(giltiga_index)
         ]
         return matt, total
