@@ -729,6 +729,7 @@ with tab_lokal:
     c1, c2 = st.columns([1, 2])
     niva_lokal = c1.radio("Nivå", ["Län", "Kommun"], horizontal=False, key="lokal_niva")
     niva_lokal_col = "Län" if niva_lokal == "Län" else "Kommun"
+    niva_lokal_plural = "län" if niva_lokal == "Län" else "kommuner"
     omraden_lista = sorted(filtered[niva_lokal_col].dropna().unique())
     valt_omrade = c2.selectbox(f"Välj {niva_lokal.lower()}", omraden_lista, key="lokal_omrade")
 
@@ -822,7 +823,7 @@ with tab_lokal:
                 <div class="standout-card" style="border-left:4px solid #C62828;">
                     <div style="font-size:0.8rem;color:#777;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Sticker ut mest</div>
                     <div style="font-size:1.2rem;font-weight:600;margin-top:0.3rem;font-family:'Poppins',sans-serif;">
-                        {valt_omrade} har {_riktningstext(e)} {namn} av landets {e['n']} {niva_lokal.lower()}
+                        {valt_omrade} har {_riktningstext(e)} {namn} av landets {e['n']} {niva_lokal_plural}
                     </div>
                     <div style="font-size:1rem;color:#333;margin-top:0.4rem;">
                         {e['varde']:.1f}% (riksgenomsnitt {e['medel']:.1f}%) — plats {e['rank']} av {e['n']}
@@ -833,7 +834,7 @@ with tab_lokal:
             )
 
             huvudcitat = (
-                f"{valt_omrade} har {_riktningstext(e)} {namn} av landets {e['n']} {niva_lokal.lower()}: "
+                f"{valt_omrade} har {_riktningstext(e)} {namn} av landets {e['n']} {niva_lokal_plural}: "
                 f"{e['varde']:.1f}% (riksgenomsnitt {e['medel']:.1f}%). {KALLA_TEXT}"
             )
 
@@ -853,7 +854,7 @@ with tab_lokal:
                 st.markdown("**Andra fakta värda att nämna**")
                 for namn2, e2 in resultat[1:6]:
                     st.markdown(
-                        f"- {valt_omrade} har {_riktningstext(e2)} {namn2} av landets {e2['n']} {niva_lokal.lower()} "
+                        f"- {valt_omrade} har {_riktningstext(e2)} {namn2} av landets {e2['n']} {niva_lokal_plural} "
                         f"({e2['varde']:.1f}%, riksgenomsnitt {e2['medel']:.1f}%)."
                     )
         else:
@@ -869,11 +870,11 @@ with tab_lokal:
             art, omraden_med_art, total_omraden, antal = sallsynt
             st.markdown(
                 f"🌟 **Sällsynt:** {valt_omrade} är en av bara **{omraden_med_art} av {total_omraden}** "
-                f"{niva_lokal.lower()} i landet med registrerade **{art.lower()}**-olyckor "
+                f"{niva_lokal_plural} i landet med registrerade **{art.lower()}**-olyckor "
                 f"({antal:,} djur i det valda urvalet).".replace(",", " ")
             )
             sallsynt_citat = (
-                f"{valt_omrade} är en av bara {omraden_med_art} av {total_omraden} {niva_lokal.lower()} i landet "
+                f"{valt_omrade} är en av bara {omraden_med_art} av {total_omraden} {niva_lokal_plural} i landet "
                 f"med registrerade {art.lower()}-olyckor. {KALLA_TEXT}"
             )
         else:
@@ -958,10 +959,12 @@ with tab_jamfor:
     c1, c2 = st.columns([1, 3])
     niva = c1.radio("Geografisk nivå", ["Län", "Kommun"], horizontal=False)
     niva_col = "Län" if niva == "Län" else "Kommun"
+    niva_plural = "län" if niva == "Län" else "kommuner"
+    niva_artikel = "ett" if niva == "Län" else "en"
     alla_omraden = filtered[niva_col].value_counts()
     forval = list(alla_omraden.head(5).index)
     valda_omraden = c2.multiselect(
-        f"Välj {niva.lower()} att jämföra", sorted(alla_omraden.index), default=forval
+        f"Välj {niva_plural} att jämföra", sorted(alla_omraden.index), default=forval
     )
 
     c3, c4 = st.columns(2)
@@ -972,7 +975,7 @@ with tab_jamfor:
     visa_som_j = c4.radio("Visa som", ["Antal", "Andel (%)"], horizontal=True, key="jamfor_visa_som")
 
     if not valda_omraden:
-        st.info(f"Välj minst ett {niva.lower()} ovan för att jämföra.")
+        st.info(f"Välj minst {niva_artikel} {niva.lower()} ovan för att jämföra.")
     else:
         jamfor_col = DIMENSIONS[jamfor_label]
         cmp_df = filtered[filtered[niva_col].isin(valda_omraden)]
