@@ -472,14 +472,41 @@ if filtered.empty:
     st.warning("Inga djur matchar de valda filtren. Justera filtren i sidopanelen.")
     st.stop()
 
+# Trend: senaste hela kalenderåret mot föregående, inom nuvarande filterurval.
+# Ett stigande antal olyckor är en försämring, inte en förbättring - därför delta_color="inverse"
+# (fler olyckor -> rött, färre -> grönt), tvärtom mot st.metrics standardfärgning.
+delta_djur = delta_olyckor = delta_period = None
+ar_lista = sorted(int(a) for a in filtered["År"].dropna().unique())
+if len(ar_lista) >= 2:
+    sista_ar = ar_lista[-1]
+    sista_datum = filtered.loc[filtered["År"] == sista_ar, "Datum"].max()
+    if (sista_datum.month, sista_datum.day) < (12, 25):
+        sista_ar = ar_lista[-2]
+    tidigare_ar = [a for a in ar_lista if a < sista_ar]
+    if tidigare_ar:
+        foreg_ar = tidigare_ar[-1]
+        djur_sista = int((filtered["År"] == sista_ar).sum())
+        djur_foreg = int((filtered["År"] == foreg_ar).sum())
+        olyckor_sista = filtered.loc[filtered["År"] == sista_ar, "OlycksID_Unik"].nunique()
+        olyckor_foreg = filtered.loc[filtered["År"] == foreg_ar, "OlycksID_Unik"].nunique()
+        if djur_foreg > 0 and olyckor_foreg > 0:
+            delta_djur = (djur_sista - djur_foreg) / djur_foreg * 100
+            delta_olyckor = (olyckor_sista - olyckor_foreg) / olyckor_foreg * 100
+            delta_period = f"{foreg_ar} → {sista_ar}"
+
 k1, k2, k3 = st.columns(3)
 k1.metric(
-    "🦌 Antal djur i olyckor", f"{len(filtered):,}".replace(",", " "),
-    help="Varje rad i rådatan är ett djur. Se 'Varav unika olyckor' för antalet faktiska olyckstillfällen.",
+    "Antal djur i olyckor", f"{len(filtered):,}".replace(",", " "),
+    delta=f"{delta_djur:+.1f}% ({delta_period})" if delta_djur is not None else None,
+    delta_color="inverse",
+    help="Varje rad i rådatan är ett djur. Se 'Varav unika olyckor' för antalet faktiska olyckstillfällen. "
+         "Trenden jämför de två senaste hela kalenderåren i urvalet.",
 )
 antal_unika = filtered["OlycksID_Unik"].nunique()
 k2.metric(
     "Varav unika olyckor", f"{antal_unika:,}".replace(",", " "),
+    delta=f"{delta_olyckor:+.1f}% ({delta_period})" if delta_olyckor is not None else None,
+    delta_color="inverse",
     help="Sedan 2021 kan flera djur rapporteras på samma olyckstillfälle (samma OlycksID), så detta tal kan vara lägre än antal djur.",
 )
 k3.metric("Vanligaste viltslag", filtered["Viltslag"].mode().iat[0])
@@ -626,7 +653,7 @@ with tab_oversikt:
         if len(ar_lista) >= 2:
             forsta_ar, sista_ar = ar_lista[0], ar_lista[-1]
             sista_datum = filtered.loc[filtered["År"] == sista_ar, "Datum"].max()
-            if (sista_datum.month, sista_datum.day) < (12, 25) and len(ar_lista) >= 3:
+            if (sista_datum.month, sista_datum.day) < (12, 25):
                 sista_ar = ar_lista[-2]
             antal_forsta = filtered.loc[filtered["År"] == forsta_ar, "OlycksID_Unik"].nunique()
             antal_sista = filtered.loc[filtered["År"] == sista_ar, "OlycksID_Unik"].nunique()
