@@ -29,6 +29,24 @@ UTFALL_FORKLARING = {
 }
 UTFALL_TOOLTIP = "\n\n".join(f"**{k}** — {v}" for k, v in UTFALL_FORKLARING.items())
 
+# Pluralform per viltslag, för korrekt svensk grammatik i löptext (t.ex. "andel järvar",
+# inte det påhittade "andel järv"). Rådjur/Vildsvin/Mufflonfår/Övriga djur böjs inte i plural.
+VILTSLAG_PLURAL = {
+    "Rådjur": "rådjur",
+    "Vildsvin": "vildsvin",
+    "Älg": "älgar",
+    "Dovhjort": "dovhjortar",
+    "Övriga djur": "övriga djur",
+    "Kronhjort": "kronhjortar",
+    "Utter": "uttrar",
+    "Örn": "örnar",
+    "Lo": "lodjur",
+    "Varg": "vargar",
+    "Björn": "björnar",
+    "Mufflonfår": "mufflonfår",
+    "Järv": "järvar",
+}
+
 # Etikett (visas för användaren) -> kolumnnamn i den städade dataframen
 DIMENSIONS = {
     "Viltslag": "Viltslag",
@@ -758,7 +776,7 @@ with tab_lokal:
 
         # Artsammansättning — vilka viltslag är över-/underrepresenterade i området
         for art in filtered["Viltslag"].dropna().unique():
-            _andel(filtered["Viltslag"] == art, f"andel {art.lower()}")
+            _andel(filtered["Viltslag"] == art, f"andel {VILTSLAG_PLURAL.get(art, art.lower())}")
 
         matt["andel av det totala antalet djur i olyckor"] = (total / total.sum() * 100)[
             (total / total.sum() * 100).index.isin(giltiga_index)
@@ -870,12 +888,12 @@ with tab_lokal:
             art, omraden_med_art, total_omraden, antal = sallsynt
             st.markdown(
                 f"🌟 **Sällsynt:** {valt_omrade} är en av bara **{omraden_med_art} av {total_omraden}** "
-                f"{niva_lokal_plural} i landet med registrerade **{art.lower()}**-olyckor "
+                f"{niva_lokal_plural} i landet med registrerade olyckor med **{art.lower()}** "
                 f"({antal:,} djur i det valda urvalet).".replace(",", " ")
             )
             sallsynt_citat = (
                 f"{valt_omrade} är en av bara {omraden_med_art} av {total_omraden} {niva_lokal_plural} i landet "
-                f"med registrerade {art.lower()}-olyckor. {KALLA_TEXT}"
+                f"med registrerade olyckor med {art.lower()}. {KALLA_TEXT}"
             )
         else:
             sallsynt_citat = None
