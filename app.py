@@ -206,6 +206,7 @@ div[data-testid="stPlotlyChart"], div[data-testid="stPlotlyChart"] > div, .js-pl
 
 MAX_MAP_POINTS = 20000
 MAX_TABLE_ROWS = 3000
+MAX_TARTBITAR = 7  # "del av helhet"-diagram (staplade/procent) ska max ha 5-7 kategorier för att vara läsbara
 MAP_HEIGHT = 500
 KALLA_TEXT = "Källa: Nationella viltolycksrådet, viltolycka.se"
 KALLA_URL = "viltolycka.se"
@@ -335,12 +336,21 @@ CHART_CONFIG = {
 }
 
 
-def visa_diagram(fig, **kwargs):
-    """Renderar ett Plotly-diagram med all zoom/pan avstängd (dragmode=False +
-    borttagna zoomknappar), så ett svep över diagrammet alltid fortsätter scrolla
-    sidan istället för att fastna i diagrammets egen interaktion — särskilt viktigt
-    på mobil. Hover/tooltips fungerar fortfarande som vanligt."""
+def visa_diagram(fig, tozero=True, **kwargs):
+    """Renderar ett Plotly-diagram enligt grafiska standarder för statistiklayouter:
+    - All zoom/pan avstängd (dragmode=False + borttagna zoomknappar) så ett svep
+      alltid fortsätter scrolla sidan istället för att fastna i diagrammet.
+    - Axeltext alltid horisontell (tickangle=0), aldrig roterad.
+    - Y-axeln börjar alltid på noll (rangemode="tozero") om inte tozero=False anges
+      — annars kan stapel-/ytdiagram ge en missvisande bild av skillnader. Sätt
+      tozero=False för kartor och korstabeller där det inte är en magnitud-axel.
+    - Lätta, ljusgrå stödlinjer istället för tunga/mörka (maximera data-bläck).
+    Hover/tooltips fungerar fortfarande som vanligt."""
     fig.update_layout(dragmode=False)
+    fig.update_xaxes(tickangle=0, gridcolor="#EEEEEE", zerolinecolor="#DDDDDD")
+    fig.update_yaxes(tickangle=0, gridcolor="#EEEEEE", zerolinecolor="#DDDDDD")
+    if tozero:
+        fig.update_yaxes(rangemode="tozero")
     kwargs.setdefault("width", "stretch")
     kwargs["config"] = {**CHART_CONFIG, **kwargs.get("config", {})}
     st.plotly_chart(fig, **kwargs)
@@ -973,8 +983,19 @@ with tab_utforska:
             cat_orders = {x_col: x_order}
         else:
             color_col = DIMENSIONS[color_label]
+            color_frekvens = plot_df[color_col].value_counts()
+            if len(color_frekvens) > MAX_TARTBITAR:
+                topp_farger = set(color_frekvens.head(MAX_TARTBITAR).index)
+                st.caption(
+                    f"'{color_label}' har {len(color_frekvens)} olika värden — varje stapel delas bara upp "
+                    f"på de {MAX_TARTBITAR} vanligaste, så uppdelningen går att läsa av."
+                )
+                plot_df = plot_df[plot_df[color_col].isin(topp_farger)]
             agg = plot_df.groupby([x_col, color_col], observed=True).size().reset_index(name="Antal")
-            color_order = kategoriordning(color_label, sorted(plot_df[color_col].dropna().unique()))
+            color_order = [
+                c for c in kategoriordning(color_label, sorted(plot_df[color_col].dropna().unique()))
+                if c in plot_df[color_col].unique()
+            ]
             cat_orders = {x_col: x_order, color_col: color_order}
 
         if visa_som != "Antal" and color_col is not None:
@@ -1088,6 +1109,7 @@ with tab_korstabell:
                 labels={"x": col_label, "y": row_label, "color": "Antal djur"},
                 title=f"{row_label} × {col_label}",
             ),
+            tozero=False,
         )
 
 with tab_karta:
@@ -1115,7 +1137,7 @@ with tab_karta:
                 map_style="open-street-map", height=MAP_HEIGHT, color_continuous_scale="YlOrRd",
                 labels=LABELS,
             )
-            visa_diagram(fig)
+            visa_diagram(fig, tozero=False)
         else:
             color_arg = None if map_color_label == "Ingen" else DIMENSIONS[map_color_label]
             fig = px.scatter_map(
@@ -1123,7 +1145,7 @@ with tab_karta:
                 zoom=4, height=MAP_HEIGHT, map_style="open-street-map", opacity=0.6,
                 labels=LABELS,
             )
-            visa_diagram(fig)
+            visa_diagram(fig, tozero=False)
 
 with tab_data:
     st.markdown("#### Filtrerad rådata")
