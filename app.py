@@ -935,13 +935,13 @@ with tab_lokal:
         if sallsynt:
             art, omraden_med_art, total_omraden, antal = sallsynt
             st.markdown(
-                f"🌟 **Sällsynt:** {valt_omrade} är en av bara **{omraden_med_art} av {total_omraden}** "
-                f"{niva_lokal_plural} i landet med registrerade olyckor med **{art.lower()}** "
+                f"🌟 **Sällsynt:** {valt_omrade} är en av bara **{omraden_med_art} av landets {total_omraden}** "
+                f"{niva_lokal_plural} där olyckor med **{art.lower()}** har registrerats "
                 f"({antal:,} djur i det valda urvalet).".replace(",", " ")
             )
             sallsynt_citat = (
-                f"{valt_omrade} är en av bara {omraden_med_art} av {total_omraden} {niva_lokal_plural} i landet "
-                f"med registrerade olyckor med {art.lower()}. {KALLA_TEXT}"
+                f"{valt_omrade} är en av bara {omraden_med_art} av landets {total_omraden} {niva_lokal_plural} "
+                f"där olyckor med {art.lower()} har registrerats. {KALLA_TEXT}"
             )
         else:
             sallsynt_citat = None
