@@ -372,7 +372,7 @@ def kategoriordning(label: str, fallback_index) -> list:
 
 
 st.set_page_config(
-    page_title="Viltolyckor i Sverige", page_icon="🦌", layout="wide",
+    page_title="Viltolyckor i Sverige", layout="wide",
     initial_sidebar_state="collapsed",
 )
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -389,7 +389,7 @@ ANTAL_UNIKA_OLYCKOR_TOTALT = df["OlycksID_Unik"].nunique()
 st.markdown(
     f"""
     <div class="banner">
-        <h1>🦌 Viltolyckor i Sverige</h1>
+        <h1>Viltolyckor i Sverige</h1>
         <p>Utforska {len(df):,} djur inblandade i {ANTAL_UNIKA_OLYCKOR_TOTALT:,} registrerade viltolyckor,
         {df['Datum'].min():%Y-%m-%d} – {df['Datum'].max():%Y-%m-%d}.</p>
         <p style="margin-top:0.5rem;font-weight:600;">👈 Tryck på pilen uppe till vänster för att öppna filtren
