@@ -282,6 +282,17 @@ def load_data(path: str, senast_andrad: float) -> pd.DataFrame:
     df["Long"] = pd.to_numeric(df["Long WGS84"].astype(str).str.replace(",", "."), errors="coerce")
     df.loc[(df["Lat"] == 0) | (df["Long"] == 0), ["Lat", "Long"]] = pd.NA
 
+    # Källans Kommun-fält innehåller några kända skönhetsfel: enstaka kommunnamn har ett
+    # extra mellanslag på slutet, Mölndal skrivs genomgående "Mölndal, Askim" (en historisk
+    # stadsdel, inte en egen kommun), "Dals Ed" saknar bindestreck (officiellt "Dals-Ed") och
+    # Råneå (en tätort i Luleå kommun sedan 1969, inte en egen kommun) förekommer som eget namn.
+    # Utan städning ger detta 291 skenbart unika kommuner istället för Sveriges faktiska 290.
+    df["Kommun"] = df["Kommun"].astype(str).str.strip().replace({
+        "Mölndal, Askim": "Mölndal",
+        "Dals Ed": "Dals-Ed",
+        "Råneå": "Luleå",
+    })
+
     ar = df["Datum"].dt.year
     manad = df["Datum"].dt.month
     veckodag = df["Datum"].dt.dayofweek
@@ -470,7 +481,7 @@ INGA_FILTER_AKTIVA = (
 )
 
 # Kategorikolumner behåller hela df:s ursprungliga kategorilista även efter filtrering
-# (t.ex. alla 291 kommuner, även om urvalet bara innehåller data från en). Utan att städa
+# (t.ex. alla 290 kommuner, även om urvalet bara innehåller data från en). Utan att städa
 # bort de nu tomma kategorierna skulle value_counts()/groupby m.fl. kunna räkna med
 # "spökkategorier" som har noll träffar i just detta urval.
 for _kategorikolumn in filtered.select_dtypes(include="category").columns:
