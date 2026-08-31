@@ -599,7 +599,7 @@ with tab_oversikt:
 
     st.markdown("### 🎲 Visste du att...?")
     if not INGA_FILTER_AKTIVA:
-        st.info("Fun facts visas bara utan aktiv filtrering just nu, för att undvika missvisande siffror vid vissa urval. Rensa filtren i sidopanelen för att se dem.")
+        st.info("\"Visste du att...?\" visas bara utan aktiv filtrering just nu, för att undvika missvisande siffror vid vissa urval. Rensa filtren i sidopanelen för att se dem.")
     else:
         st.caption("Baserat på ditt aktuella filterval ovan — kan se annorlunda ut om du ändrar filtren.")
 
@@ -768,7 +768,7 @@ with tab_oversikt:
             kort_delar.append("</div>")
             st.markdown("".join(kort_delar), unsafe_allow_html=True)
         else:
-            st.info("För få djur i urvalet för att beräkna fun facts. Justera filtren i sidopanelen.")
+            st.info("För få djur i urvalet för att beräkna \"Visste du att...?\". Justera filtren i sidopanelen.")
 
 with tab_lokal:
     st.markdown("#### Hitta den lokala vinkeln")
